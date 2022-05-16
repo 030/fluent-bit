@@ -17,30 +17,30 @@
  *  limitations under the License.
  */
 
-#include <fluent-bit/flb_output_plugin.h>
-#include <fluent-bit/flb_mem.h>
-#include <fluent-bit/flb_utils.h>
+#include "es_conf.h"
+
+#include <fluent-bit/flb_aws_credentials.h>
 #include <fluent-bit/flb_http_client.h>
+#include <fluent-bit/flb_mem.h>
+#include <fluent-bit/flb_output_plugin.h>
 #include <fluent-bit/flb_record_accessor.h>
 #include <fluent-bit/flb_signv4.h>
-#include <fluent-bit/flb_aws_credentials.h>
+#include <fluent-bit/flb_utils.h>
 #include <mbedtls/base64.h>
 
 #include "es.h"
-#include "es_conf.h"
 
 /*
  * extract_cloud_host extracts the public hostname
  * of a deployment from a Cloud ID string.
  *
  * The Cloud ID string has the format "<deployment_name>:<base64_info>".
- * Once decoded, the "base64_info" string has the format "<deployment_region>$<elasticsearch_hostname>$<kibana_hostname>"
- * and the function returns "<elasticsearch_hostname>.<deployment_region>" token.
+ * Once decoded, the "base64_info" string has the format
+ * "<deployment_region>$<elasticsearch_hostname>$<kibana_hostname>" and the
+ * function returns "<elasticsearch_hostname>.<deployment_region>" token.
  */
 static flb_sds_t extract_cloud_host(struct flb_elasticsearch *ctx,
-                                    const char *cloud_id)
-{
-
+                                    const char *cloud_id) {
     char *colon;
     char *region;
     char *host;
@@ -58,7 +58,8 @@ static flb_sds_t extract_cloud_host(struct flb_elasticsearch *ctx,
     colon++;
 
     /* decode base64 */
-    ret = mbedtls_base64_decode((unsigned char *)buf, sizeof(buf), &len, (unsigned char *)colon, strlen(colon));
+    ret = mbedtls_base64_decode((unsigned char *)buf, sizeof(buf), &len,
+                                (unsigned char *)colon, strlen(colon));
     if (ret) {
         flb_plg_error(ctx->ins, "cannot decode cloud_id");
         return NULL;
@@ -87,8 +88,7 @@ static flb_sds_t extract_cloud_host(struct flb_elasticsearch *ctx,
  *   cloud_passwd = ZXVyb3BxxxxxxZTA1Ng
  */
 static void set_cloud_credentials(struct flb_elasticsearch *ctx,
-                                  const char *cloud_auth)
-{
+                                  const char *cloud_auth) {
     /* extract strings */
     int items = 0;
     struct mk_list *toks;
@@ -99,18 +99,17 @@ static void set_cloud_credentials(struct flb_elasticsearch *ctx,
         items++;
         entry = mk_list_entry(head, struct flb_split_entry, _head);
         if (items == 1) {
-          ctx->cloud_user = flb_strdup(entry->value);
+            ctx->cloud_user = flb_strdup(entry->value);
         }
         if (items == 2) {
-          ctx->cloud_passwd = flb_strdup(entry->value);
+            ctx->cloud_passwd = flb_strdup(entry->value);
         }
     }
     flb_utils_split_free(toks);
 }
 
 struct flb_elasticsearch *flb_es_conf_create(struct flb_output_instance *ins,
-                                             struct flb_config *config)
-{
+                                             struct flb_config *config) {
     int len;
     int io_flags = 0;
     ssize_t ret;
@@ -123,6 +122,7 @@ struct flb_elasticsearch *flb_es_conf_create(struct flb_output_instance *ins,
     char *aws_session_name = NULL;
 #endif
     char *cloud_host = NULL;
+    int cloud_port = FLB_ES_DEFAULT_HTTPS_PORT;
     struct flb_uri *uri = ins->host.uri;
     struct flb_uri_field *f_index = NULL;
     struct flb_uri_field *f_type = NULL;
@@ -140,7 +140,7 @@ struct flb_elasticsearch *flb_es_conf_create(struct flb_output_instance *ins,
     if (uri) {
         if (uri->count >= 2) {
             f_index = flb_uri_get(uri, 0);
-            f_type  = flb_uri_get(uri, 1);
+            f_type = flb_uri_get(uri, 1);
         }
     }
 
@@ -153,15 +153,35 @@ struct flb_elasticsearch *flb_es_conf_create(struct flb_output_instance *ins,
             flb_es_conf_destroy(ctx);
             return NULL;
         }
+        flb_plg_debug(ctx->ins, "extacted cloud_host: '%s'", cloud_host);
+
+        flb_plg_debug(ctx->ins,
+                      "check whether extracted cloud_host '%s' contains a port",
+                      cloud_host);
+        cloud_host = strtok(cloud_host, ":");
+        flb_plg_debug(ctx->ins, "cloud_host without port: '%s'", cloud_host);
+
+        char *portChar = strtok(NULL, ":");
+        flb_plg_debug(ctx->ins, "extracted portChar: '%s'", portChar);
+        int port = (int)strtol(portChar, (char **)NULL, 10);
+        flb_plg_debug(ctx->ins, "converted portChart to port int: '%i'", port);
+        if (port == NULL) {
+            port = cloud_port;
+        }
+        flb_plg_debug(ctx->ins,
+                      "checked whether extracted port was null and set it to "
+                      "default https port or not. Outcome: '%i'",
+                      port);
+
         ins->host.name = cloud_host;
-        ins->host.port = 443;
+        ins->host.port = port;
     }
 
     /* Set default network configuration */
     flb_output_net_default("127.0.0.1", 9200, ins);
 
     /* Populate context with config map defaults and incoming properties */
-    ret = flb_output_config_map_set(ins, (void *) ctx);
+    ret = flb_output_config_map_set(ins, (void *)ctx);
     if (ret == -1) {
         flb_plg_error(ctx->ins, "configuration error");
         flb_es_conf_destroy(ctx);
@@ -177,8 +197,7 @@ struct flb_elasticsearch *flb_es_conf_create(struct flb_output_instance *ins,
     /* use TLS ? */
     if (ins->use_tls == FLB_TRUE) {
         io_flags = FLB_IO_TLS;
-    }
-    else {
+    } else {
         io_flags = FLB_IO_TCP;
     }
 
@@ -187,11 +206,8 @@ struct flb_elasticsearch *flb_es_conf_create(struct flb_output_instance *ins,
     }
 
     /* Prepare an upstream handler */
-    upstream = flb_upstream_create(config,
-                                   ins->host.name,
-                                   ins->host.port,
-                                   io_flags,
-                                   ins->tls);
+    upstream = flb_upstream_create(config, ins->host.name, ins->host.port,
+                                   io_flags, ins->tls);
     if (!upstream) {
         flb_plg_error(ctx->ins, "cannot create Upstream context");
         flb_es_conf_destroy(ctx);
@@ -225,9 +241,9 @@ struct flb_elasticsearch *flb_es_conf_create(struct flb_output_instance *ins,
     /* Elasticsearch: Pipeline */
     tmp = flb_output_get_property("pipeline", ins);
     if (tmp) {
-        snprintf(ctx->uri, sizeof(ctx->uri) - 1, "%s/_bulk/?pipeline=%s", path, tmp);
-    }
-    else {
+        snprintf(ctx->uri, sizeof(ctx->uri) - 1, "%s/_bulk/?pipeline=%s", path,
+                 tmp);
+    } else {
         snprintf(ctx->uri, sizeof(ctx->uri) - 1, "%s/_bulk", path);
     }
 
@@ -245,22 +261,23 @@ struct flb_elasticsearch *flb_es_conf_create(struct flb_output_instance *ins,
     if (ctx->write_operation) {
         if (strcasecmp(ctx->write_operation, FLB_ES_WRITE_OP_INDEX) == 0) {
             ctx->es_action = flb_strdup(FLB_ES_WRITE_OP_INDEX);
-        }
-        else if (strcasecmp(ctx->write_operation, FLB_ES_WRITE_OP_CREATE) == 0) {
+        } else if (strcasecmp(ctx->write_operation, FLB_ES_WRITE_OP_CREATE) == 0) {
             ctx->es_action = flb_strdup(FLB_ES_WRITE_OP_CREATE);
-        }
-        else if (strcasecmp(ctx->write_operation, FLB_ES_WRITE_OP_UPDATE) == 0
-            || strcasecmp(ctx->write_operation, FLB_ES_WRITE_OP_UPSERT) == 0) {
+        } else if (strcasecmp(ctx->write_operation, FLB_ES_WRITE_OP_UPDATE) == 0 ||
+                   strcasecmp(ctx->write_operation, FLB_ES_WRITE_OP_UPSERT) == 0) {
             ctx->es_action = flb_strdup(FLB_ES_WRITE_OP_UPDATE);
-        }
-        else {
-            flb_plg_error(ins, "wrong Write_Operation (should be one of index, create, update, upsert)");
+        } else {
+            flb_plg_error(ins,
+                          "wrong Write_Operation (should be one of index, create, "
+                          "update, upsert)");
             flb_es_conf_destroy(ctx);
             return NULL;
         }
-        if (strcasecmp(ctx->es_action, FLB_ES_WRITE_OP_UPDATE) == 0
-            && !ctx->ra_id_key && ctx->generate_id == FLB_FALSE) {
-            flb_plg_error(ins, "Id_Key or Generate_Id must be set when Write_Operation update or upsert");
+        if (strcasecmp(ctx->es_action, FLB_ES_WRITE_OP_UPDATE) == 0 &&
+            !ctx->ra_id_key && ctx->generate_id == FLB_FALSE) {
+            flb_plg_error(ins,
+                          "Id_Key or Generate_Id must be set when Write_Operation "
+                          "update or upsert");
             flb_es_conf_destroy(ctx);
             return NULL;
         }
@@ -281,8 +298,7 @@ struct flb_elasticsearch *flb_es_conf_create(struct flb_output_instance *ins,
 
             ctx->ra_prefix_key = flb_ra_create(buf, FLB_TRUE);
             flb_free(buf);
-        }
-        else {
+        } else {
             ctx->ra_prefix_key = flb_ra_create(ctx->logstash_prefix_key, FLB_TRUE);
         }
 
@@ -303,14 +319,10 @@ struct flb_elasticsearch *flb_es_conf_create(struct flb_output_instance *ins,
             flb_debug("[out_es] Enabled AWS Auth");
 
             /* AWS provider needs a separate TLS instance */
-            ctx->aws_tls = flb_tls_create(FLB_TRUE,
-                                          ins->tls_debug,
-                                          ins->tls_vhost,
-                                          ins->tls_ca_path,
-                                          ins->tls_ca_file,
-                                          ins->tls_crt_file,
-                                          ins->tls_key_file,
-                                          ins->tls_key_passwd);
+            ctx->aws_tls =
+                flb_tls_create(FLB_TRUE, ins->tls_debug, ins->tls_vhost,
+                               ins->tls_ca_path, ins->tls_ca_file, ins->tls_crt_file,
+                               ins->tls_key_file, ins->tls_key_passwd);
             if (!ctx->aws_tls) {
                 flb_errno();
                 flb_es_conf_destroy(ctx);
@@ -323,19 +335,16 @@ struct flb_elasticsearch *flb_es_conf_create(struct flb_output_instance *ins,
                 flb_es_conf_destroy(ctx);
                 return NULL;
             }
-            ctx->aws_region = (char *) tmp;
+            ctx->aws_region = (char *)tmp;
 
             tmp = flb_output_get_property("aws_sts_endpoint", ins);
             if (tmp) {
-                ctx->aws_sts_endpoint = (char *) tmp;
+                ctx->aws_sts_endpoint = (char *)tmp;
             }
 
-            ctx->aws_provider = flb_standard_chain_provider_create(config,
-                                                                   ctx->aws_tls,
-                                                                   ctx->aws_region,
-                                                                   ctx->aws_sts_endpoint,
-                                                                   NULL,
-                                                                   flb_aws_client_generator());
+            ctx->aws_provider = flb_standard_chain_provider_create(
+                config, ctx->aws_tls, ctx->aws_region, ctx->aws_sts_endpoint, NULL,
+                flb_aws_client_generator());
             if (!ctx->aws_provider) {
                 flb_error("[out_es] Failed to create AWS Credential Provider");
                 flb_es_conf_destroy(ctx);
@@ -346,56 +355,46 @@ struct flb_elasticsearch *flb_es_conf_create(struct flb_output_instance *ins,
             if (tmp) {
                 /* Use the STS Provider */
                 ctx->base_aws_provider = ctx->aws_provider;
-                aws_role_arn = (char *) tmp;
+                aws_role_arn = (char *)tmp;
                 aws_external_id = NULL;
                 tmp = flb_output_get_property("aws_external_id", ins);
                 if (tmp) {
-                    aws_external_id = (char *) tmp;
+                    aws_external_id = (char *)tmp;
                 }
 
                 aws_session_name = flb_sts_session_name();
                 if (!aws_session_name) {
-                    flb_error("[out_es] Failed to create aws iam role "
-                              "session name");
+                    flb_error(
+                        "[out_es] Failed to create aws iam role "
+                        "session name");
                     flb_es_conf_destroy(ctx);
                     return NULL;
                 }
 
                 /* STS provider needs yet another separate TLS instance */
-                ctx->aws_sts_tls = flb_tls_create(FLB_TRUE,
-                                                  ins->tls_debug,
-                                                  ins->tls_vhost,
-                                                  ins->tls_ca_path,
-                                                  ins->tls_ca_file,
-                                                  ins->tls_crt_file,
-                                                  ins->tls_key_file,
-                                                  ins->tls_key_passwd);
+                ctx->aws_sts_tls = flb_tls_create(
+                    FLB_TRUE, ins->tls_debug, ins->tls_vhost, ins->tls_ca_path,
+                    ins->tls_ca_file, ins->tls_crt_file, ins->tls_key_file,
+                    ins->tls_key_passwd);
                 if (!ctx->aws_sts_tls) {
                     flb_errno();
                     flb_es_conf_destroy(ctx);
                     return NULL;
                 }
 
-                ctx->aws_provider = flb_sts_provider_create(config,
-                                                            ctx->aws_sts_tls,
-                                                            ctx->
-                                                            base_aws_provider,
-                                                            aws_external_id,
-                                                            aws_role_arn,
-                                                            aws_session_name,
-                                                            ctx->aws_region,
-                                                            ctx->aws_sts_endpoint,
-                                                            NULL,
-                                                            flb_aws_client_generator());
+                ctx->aws_provider = flb_sts_provider_create(
+                    config, ctx->aws_sts_tls, ctx->base_aws_provider, aws_external_id,
+                    aws_role_arn, aws_session_name, ctx->aws_region,
+                    ctx->aws_sts_endpoint, NULL, flb_aws_client_generator());
                 /* Session name can be freed once provider is created */
                 flb_free(aws_session_name);
                 if (!ctx->aws_provider) {
-                    flb_error("[out_es] Failed to create AWS STS Credential "
-                              "Provider");
+                    flb_error(
+                        "[out_es] Failed to create AWS STS Credential "
+                        "Provider");
                     flb_es_conf_destroy(ctx);
                     return NULL;
                 }
-
             }
 
             /* initialize credentials in sync mode */
@@ -403,7 +402,8 @@ struct flb_elasticsearch *flb_es_conf_create(struct flb_output_instance *ins,
             ctx->aws_provider->provider_vtable->init(ctx->aws_provider);
             /* set back to async */
             ctx->aws_provider->provider_vtable->async(ctx->aws_provider);
-            ctx->aws_provider->provider_vtable->upstream_set(ctx->aws_provider, ctx->ins);
+            ctx->aws_provider->provider_vtable->upstream_set(ctx->aws_provider,
+                                                             ctx->ins);
         }
     }
 #endif
@@ -411,8 +411,7 @@ struct flb_elasticsearch *flb_es_conf_create(struct flb_output_instance *ins,
     return ctx;
 }
 
-int flb_es_conf_destroy(struct flb_elasticsearch *ctx)
-{
+int flb_es_conf_destroy(struct flb_elasticsearch *ctx) {
     if (!ctx) {
         return 0;
     }

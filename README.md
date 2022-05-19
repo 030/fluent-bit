@@ -1,5 +1,16 @@
 # ![logo](fluentbit_logo.png)
 
+As long as the PR is not merged, the docker image has to be built manually:
+
+```bash
+docker build -t <registry-name>.azurecr.io/fluent/fluent-bit:1.9.3-cloud-id-port-issue --target=production -f dockerfiles/Dockerfile .
+```
+
+Open ticket and PR:
+
+* <https://github.com/fluent/fluent-bit/issues/4260>
+* <https://github.com/fluent/fluent-bit/pull/5458/files>
+
 ### CI Status
 
 | CI Workflow       | Status             |
@@ -20,26 +31,26 @@ Fluent Bit runs on x86_64, x86, arm32v7 and arm64v8 architectures.
 
 ## Features
 
-- High Performance
-- Data Parsing
-  - Convert your unstructured messages using our parsers: [JSON](https://docs.fluentbit.io/manual/pipeline/parsers/json), [Regex](https://docs.fluentbit.io/manual/pipeline/parsers/regular-expression), [LTSV](https://docs.fluentbit.io/manual/pipeline/parsers/ltsv) and [Logfmt](https://docs.fluentbit.io/manual/pipeline/parsers/logfmt)
-- Reliability and Data Integrity
-  - [Backpressure](https://docs.fluentbit.io/manual/administration/backpressure) Handling
-  - [Data Buffering](https://docs.fluentbit.io/manual/administration/buffering-and-storage) in memory and file system
-- Networking
-  - Security: built-in TLS/SSL support
-  - Asynchronous I/O
-- Pluggable Architecture and [Extensibility](https://docs.fluentbit.io/manual/development): Inputs, Filters and Outputs
-  - More than 70 built-in plugins available
-  - Extensibility
-    - Write any input, filter or output plugin in C language
-    - Write [Filters in Lua](https://docs.fluentbit.io/manual/filter/lua) or [Output plugins in Golang](https://docs.fluentbit.io/manual/development/golang-output-plugins)
-- [Monitoring](https://docs.fluentbit.io/manual/administration/monitoring): expose internal metrics over HTTP in JSON and [Prometheus](https://prometheus.io/) format
-- [Stream Processing](https://docs.fluentbit.io/manual/stream-processing/introduction): Perform data selection and transformation using simple SQL queries
-  - Create new streams of data using query results
-  - Aggregation Windows
-  - Data analysis and prediction: Timeseries forecasting
-- Portable: runs on Linux, MacOS, Windows and BSD systems
+* High Performance
+* Data Parsing
+  * Convert your unstructured messages using our parsers: [JSON](https://docs.fluentbit.io/manual/pipeline/parsers/json), [Regex](https://docs.fluentbit.io/manual/pipeline/parsers/regular-expression), [LTSV](https://docs.fluentbit.io/manual/pipeline/parsers/ltsv) and [Logfmt](https://docs.fluentbit.io/manual/pipeline/parsers/logfmt)
+* Reliability and Data Integrity
+  * [Backpressure](https://docs.fluentbit.io/manual/administration/backpressure) Handling
+  * [Data Buffering](https://docs.fluentbit.io/manual/administration/buffering-and-storage) in memory and file system
+* Networking
+  * Security: built-in TLS/SSL support
+  * Asynchronous I/O
+* Pluggable Architecture and [Extensibility](https://docs.fluentbit.io/manual/development): Inputs, Filters and Outputs
+  * More than 70 built-in plugins available
+  * Extensibility
+    * Write any input, filter or output plugin in C language
+    * Write [Filters in Lua](https://docs.fluentbit.io/manual/filter/lua) or [Output plugins in Golang](https://docs.fluentbit.io/manual/development/golang-output-plugins)
+* [Monitoring](https://docs.fluentbit.io/manual/administration/monitoring): expose internal metrics over HTTP in JSON and [Prometheus](https://prometheus.io/) format
+* [Stream Processing](https://docs.fluentbit.io/manual/stream-processing/introduction): Perform data selection and transformation using simple SQL queries
+  * Create new streams of data using query results
+  * Aggregation Windows
+  * Data analysis and prediction: Timeseries forecasting
+* Portable: runs on Linux, MacOS, Windows and BSD systems
 
 ## Fluent Bit in Production
 
@@ -53,7 +64,7 @@ Fluent Bit runs on x86_64, x86, arm32v7 and arm64v8 architectures.
 
 Our official project documentation for [installation](https://docs.fluentbit.io/manual/installation), [configuration](https://docs.fluentbit.io/manual/administration/configuring-fluent-bit), deployment and development topics is located here:
 
-- [https://docs.fluentbit.io](https://fluentbit.io)
+* [https://docs.fluentbit.io](https://fluentbit.io)
 
 ### Quick Start
 
@@ -74,10 +85,10 @@ If you are interested into more details, please refer to the [Build & Install](h
 
 We provide packages for most common Linux distributions:
 
-- [Debian](https://docs.fluentbit.io/manual/installation/linux/debian)
-- [Raspbian](https://docs.fluentbit.io/manual/installation/linux/raspbian-raspberry-pi)
-- [Ubuntu](https://docs.fluentbit.io/manual/installation/linux/ubuntu)
-- [CentOS](https://docs.fluentbit.io/manual/installation/linux/redhat-centos)
+* [Debian](https://docs.fluentbit.io/manual/installation/linux/debian)
+* [Raspbian](https://docs.fluentbit.io/manual/installation/linux/raspbian-raspberry-pi)
+* [Ubuntu](https://docs.fluentbit.io/manual/installation/linux/ubuntu)
+* [CentOS](https://docs.fluentbit.io/manual/installation/linux/redhat-centos)
 
 #### Linux / Docker Container Images
 
@@ -170,15 +181,16 @@ Fluent Bit is fully supported on Windows environments, get started with [these i
 If you are interested in contributing to Fluent bit with bug fixes, new features or coding in general, please refer to the code [CONTRIBUTING](CONTRIBUTING.md) guidelines. You can also refer the Beginners Guide to contributing to Fluent Bit [here.](DEVELOPER_GUIDE.md)
 
 ![Visualization of the codebase](./codebase-structure.svg)
+
 ## Community & Contact
 
 Feel free to join us on our Slack channel, Mailing List or IRC:
 
-- [Slack](http://slack.fluentd.org) (#fluent-bit channel)
-- [Mailing List](https://groups.google.com/forum/#!forum/fluent-bit)
-- [Discourse Forum](https://discuss.fluentd.org)
-- [Twitter](http://twitter.com/fluentbit)
-- [IRC](irc.freenode.net) #fluent-bit
+* [Slack](http://slack.fluentd.org) (#fluent-bit channel)
+* [Mailing List](https://groups.google.com/forum/#!forum/fluent-bit)
+* [Discourse Forum](https://discuss.fluentd.org)
+* [Twitter](http://twitter.com/fluentbit)
+* [IRC](irc.freenode.net) #fluent-bit
 
 ## License
 
